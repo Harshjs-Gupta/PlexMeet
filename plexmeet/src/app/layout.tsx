@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import Notification from "@/components/toastifyNotification/notification";
+import { SocketProvider } from "./context/socketProvider";
 
 const alefSans = localFont({
   src: "./fonts/Alef-Regular.ttf",
@@ -27,8 +28,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${alefSans.variable} ${alefMono.variable} antialiased`}>
-        <Notification />
-        {children}
+        <SocketProvider>
+          <Notification />
+          {children}
+        </SocketProvider>
       </body>
     </html>
   );

@@ -1,13 +1,54 @@
-// import Image from "next/image";
+"use client";
 
+import { useCallback, useEffect, useState } from "react";
 import Shadow from "@/components/home-background/shadow";
 import HomeImage from "@/components/homePageImage/home-image";
 import Navbar from "@/components/homePageImage/navbar";
-import Image from "next/image";
+import TextField from "@mui/material/TextField";
+import { Button, InputAdornment } from "@mui/material";
+import mail from "@/assets/icon/mail.png";
 import keyboardIcon from "@/assets/icon/keyboardIcon.png";
-import mailIcon from "@/assets/icon/mail.png";
+import Image from "next/image";
+import { useSocket } from "./context/socketProvider";
+import { useRouter } from "next/navigation";
+
+interface Combine {
+  email: string;
+  roomCode: string;
+}
 
 export default function Home() {
+  const [email, setEmail] = useState("");
+  const [roomCode, setRoomCode] = useState("");
+  const router = useRouter();
+
+  const socket = useSocket();
+
+  const handleSubmit = useCallback(
+    (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      socket?.emit("room:join", { email, roomCode });
+      setEmail("");
+      setRoomCode("");
+    },
+    [email, roomCode, socket]
+  );
+
+  const handleJoinRoom = useCallback(
+    (data: Combine) => {
+      const { email, roomCode } = data;
+      router.push(`/room-page?email=${email}?roomCode=${roomCode}`);
+    },
+    [router]
+  );
+
+  useEffect(() => {
+    socket?.on("room:join", handleJoinRoom);
+    return () => {
+      socket?.off("room:join", handleJoinRoom);
+    };
+  }, [socket, handleJoinRoom]);
+
   return (
     <div className="background relative overflow-hidden">
       <Shadow />
@@ -16,7 +57,7 @@ export default function Home() {
       </div>
       <div className="relative flex gap-32 items-center">
         <HomeImage />
-        <div className=" relative right-0 flex flex-col gap-5">
+        <div className="relative right-0 flex flex-col gap-5">
           <div className="flex flex-col gap-2">
             <span className="text-5xl text-[#353B51] font-bold">
               Video calls and meetings
@@ -33,26 +74,43 @@ export default function Home() {
               anywhere with Plex Meet
             </span>
           </div>
-          <form className="flex gap-5">
-            <div className="flex gap-2 h-10 w-44 bg-white items-center justify-center p-2 rounded-md border-2 border-black">
-              <Image src={mailIcon} alt="mailIcon" className="h-5 w-5" />
-              <input
-                type="email"
-                placeholder="Enter your email"
-                className=" h-8 w-32 text-sm text-black outline-none bg-transparent placeholder:font-semibold placeholder:text-[#353B51]"
-              />
-            </div>
-            <div className="flex gap-2 h-10 w-44 bg-white items-center justify-center p-2 rounded-md border-2 border-black">
-              <Image src={keyboardIcon} alt="mailIcon" className="h-5 w-5" />
-              <input
-                type="email"
-                placeholder="Enter a code"
-                className=" h-8 w-32 text-sm text-black outline-none bg-transparent placeholder:font-semibold placeholder:text-[#353B51]"
-              />
-            </div>
-            <button className="h-10 w-28 bg-[#5d7afb] border-black border rounded-md text-[#353B51] font-semibold">
-              Enter Room
-            </button>
+          <form className="flex gap-5" onSubmit={handleSubmit}>
+            <TextField
+              variant="outlined"
+              label="Email"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Image src={mail} alt="mail" className="h-5 w-5" />
+                  </InputAdornment>
+                ),
+              }}
+              size="small"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <TextField
+              variant="outlined"
+              label="Room Code"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Image src={keyboardIcon} alt="mail" className="h-5 w-5" />
+                  </InputAdornment>
+                ),
+              }}
+              size="small"
+              value={roomCode}
+              onChange={(e) => setRoomCode(e.target.value)}
+            />
+            <Button
+              variant="contained"
+              type="submit"
+              size="small"
+              sx={{ backgroundColor: "#353B51" }}
+            >
+              Enter
+            </Button>
           </form>
           <div className="w-[500px] border-b-2 border-black"></div>
         </div>
