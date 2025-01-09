@@ -1,17 +1,24 @@
+// Create a peer connection only in a browser environment
+let peerConnection;
+
+if (typeof window !== "undefined") {
+  peerConnection = new RTCPeerConnection({
+    iceServers: [
+      {
+        urls: [
+          "stun:stun.l.google.com:19302",
+          "stun:global.stun.twilio.com:3478",
+        ],
+      },
+    ],
+  });
+}
+
+// PeerService class definition
 class PeerService {
   constructor() {
-    if (!this.peer) {
-      this.peer = new RTCPeerConnection({
-        iceServers: [
-          {
-            urls: [
-              "stun:stun.l.google.com:19302",
-              "stun:global.stun.twilio.com:3478",
-            ],
-          },
-        ],
-      });
-    }
+    // Assign the dynamic peer connection
+    this.peer = peerConnection || null;
   }
 
   async getAnswer(offer) {
@@ -21,11 +28,14 @@ class PeerService {
       await this.peer.setLocalDescription(new RTCSessionDescription(answer));
       return answer;
     }
+    throw new Error("Peer connection is not initialized.");
   }
 
   async setLocalDescription(answer) {
     if (this.peer) {
       await this.peer.setRemoteDescription(new RTCSessionDescription(answer));
+    } else {
+      throw new Error("Peer connection is not initialized.");
     }
   }
 
@@ -35,6 +45,7 @@ class PeerService {
       await this.peer.setLocalDescription(new RTCSessionDescription(offer));
       return offer;
     }
+    throw new Error("Peer connection is not initialized.");
   }
 }
 

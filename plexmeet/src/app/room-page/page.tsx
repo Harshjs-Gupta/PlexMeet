@@ -1,10 +1,12 @@
 "use client";
+import dynamic from "next/dynamic";
 import Navbar from "@/components/homePageImage/navbar";
 import { useSocket } from "../context/socketProvider";
 import { useCallback, useEffect, useState } from "react";
 import ReactPlayer from "react-player";
 import peer from "../service/peer";
 
+// Interfaces for TypeScript
 interface UserJoin {
   email: string;
   id: string;
@@ -25,6 +27,7 @@ interface NegotiationIncoming {
   offer: RTCSessionDescriptionInit;
 }
 
+// RoomPage Component
 function RoomPage() {
   const socket = useSocket();
   const [remoteSocketId, setRemoteSocketId] = useState<string | null>(null);
@@ -37,32 +40,36 @@ function RoomPage() {
   }, []);
 
   const handleCallUser = useCallback(async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: true,
-    });
-    const offer = await peer.getOffer();
-    socket?.emit("user:call", {
-      to: remoteSocketId,
-      offer,
-    });
-    setMyStream(stream);
-  }, [remoteSocketId, socket]);
-
-  const handleIncomingCall = useCallback(
-    async ({ from, offer }: IncomingCall) => {
-      setRemoteSocketId(from);
+    if (typeof window !== "undefined" && navigator.mediaDevices) {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: true,
       });
-      setMyStream(stream);
-      console.log(`Incoming call`, from, offer);
-      const answer = await peer.getAnswer(offer);
-      socket?.emit("call:accepted", {
-        to: from,
-        answer,
+      const offer = await peer.getOffer();
+      socket?.emit("user:call", {
+        to: remoteSocketId,
+        offer,
       });
+      setMyStream(stream);
+    }
+  }, [remoteSocketId, socket]);
+
+  const handleIncomingCall = useCallback(
+    async ({ from, offer }: IncomingCall) => {
+      if (typeof window !== "undefined" && navigator.mediaDevices) {
+        setRemoteSocketId(from);
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true,
+        });
+        setMyStream(stream);
+        console.log(`Incoming call`, from, offer);
+        const answer = await peer.getAnswer(offer);
+        socket?.emit("call:accepted", {
+          to: from,
+          answer,
+        });
+      }
     },
     [socket]
   );
@@ -93,10 +100,12 @@ function RoomPage() {
   }, [remoteSocketId, socket]);
 
   useEffect(() => {
-    peer.peer.addEventListener("negotiationneeded", handleNegotiation);
-    return () => {
-      peer.peer.removeEventListener("negotiationneeded", handleNegotiation);
-    };
+    if (peer?.peer) {
+      peer.peer.addEventListener("negotiationneeded", handleNegotiation);
+      return () => {
+        peer.peer.removeEventListener("negotiationneeded", handleNegotiation);
+      };
+    }
   }, [handleNegotiation]);
 
   const handleNegotiationIncoming = useCallback(
@@ -115,16 +124,16 @@ function RoomPage() {
   );
 
   useEffect(() => {
-    peer.peer.addEventListener("track", (e) => {
-      const remoteStream = e.streams;
-      setRemoteStream(remoteStream[0]);
-    });
-    return () => {
-      peer.peer.addEventListener("track", (e) => {
-        const remoteStream = e.streams;
-        setRemoteStream(remoteStream[0]);
-      });
-    };
+    if (peer?.peer) {
+      const trackHandler = (e: RTCTrackEvent) => {
+        const remoteStream = e.streams[0];
+        setRemoteStream(remoteStream);
+      };
+      peer.peer.addEventListener("track", trackHandler);
+      return () => {
+        peer.peer.removeEventListener("track", trackHandler);
+      };
+    }
   }, []);
 
   useEffect(() => {
@@ -135,8 +144,8 @@ function RoomPage() {
     socket?.on("peer:nego:final", handleNegotiationFinal);
     return () => {
       socket?.off("user:joined", handleUserJoined);
-      socket?.off("incoming:call", handleUserJoined);
-      socket?.off("call:accepted", handleUserJoined);
+      socket?.off("incoming:call", handleIncomingCall);
+      socket?.off("call:accepted", handleCallAccepted);
       socket?.off("peer:negotiation:needed", handleNegotiationIncoming);
       socket?.off("peer:nego:final", handleNegotiationFinal);
     };
@@ -148,6 +157,7 @@ function RoomPage() {
     handleNegotiationIncoming,
     handleNegotiationFinal,
   ]);
+
   return (
     <div className="p-5 h-screen w-screen bg-[#BAD2D9]">
       <Navbar />
@@ -210,4 +220,4 @@ function RoomPage() {
   );
 }
 
-export default RoomPage;
+export default dynamic(() => Promise.resolve(RoomPage), { ssr: false });
