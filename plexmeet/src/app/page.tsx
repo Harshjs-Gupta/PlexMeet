@@ -24,6 +24,7 @@ export default function Home() {
 
   const socket = useSocket();
 
+  //handle submit for joining room
   const handleSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
